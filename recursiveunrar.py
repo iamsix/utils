@@ -5,18 +5,19 @@ import sys
 import re
 from subprocess import call
 
+
 def find_rars(path):
     rarfiles = []
     files = os.listdir(path)
     for di in files:
         if os.path.isdir(os.path.join(path, di)):
             find_rars(os.path.join(path, di))
-    print("Searching {} for rars".format(path))
+    print(("Searching {} for rars".format(path)))
     rarfiles = [f for f in files if re.search(r'\.part(\d+)\.rar$|\.rar$|\.r\d{2}$', f)]
 
     if rarfiles:
         extracted = False
-        print("found {} - Extracting..".format(rarfiles))
+        print(("found {} - Extracting..".format(rarfiles)))
         for rar in rarfiles:
             target = ""
             if re.search(r'\.part(0+)?1\.rar$', rar):
@@ -25,15 +26,21 @@ def find_rars(path):
                 target = rar
 
             if target:
-                print("Unraring {}".format(target))
+                print(("Unraring {}".format(target)))
                 if not call(["unrar", "x", os.path.join(path, target), path]):
                     extracted = True
+                else:
+                    extracted = False
+                    #if there's multiple rar files it could be false then true
+                    #so for now if we error lets just stop here and not delete anything
+                    #TODO: Fix this later
+                    break
 
         if extracted:
             for rar in rarfiles:
                 #Remove the unrared files
-                print("Deleting {}".format(os.path.join(path,rar)))
-                os.remove(os.path.join(path,rar))
+                print(("Deleting {}".format(os.path.join(path, rar))))
+                os.remove(os.path.join(path, rar))
             #Now check if we just unrared a rar
             find_rars(path)
     else:
@@ -49,4 +56,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
