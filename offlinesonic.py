@@ -3,8 +3,24 @@ import asyncio
 import aiohttp
 import datetime
 import json
+import yt_dlp
+from ytmusicapi import YTMusic
 
 
+def my_hook(d):
+    if d['status'] == 'finished':
+        print(d['filename'])
+
+def download(url,artist,title):
+    ydl_opts = {
+        'format': "bestaudio[ext=m4a]",
+        'outtmpl': f'/vids/lolmusic/sonic/{artist} - {title}.m4a',
+        'progress_hooks': [my_hook]}
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+
+ytmusic = YTMusic()
 
 loop = asyncio.get_event_loop()
 session = aiohttp.ClientSession(loop=loop)
@@ -30,17 +46,23 @@ if not result:
 
 url = 'https://player.rogersradio.ca/chdi/widget/recently_played?page=0&num_per_page=10'
 async def update():
-    lastseen = 0 #TODO - keep this number for restarts?
+    lastseen = 1631153871 #TODO - keep this number for restarts?
     while True:
         dt = datetime.datetime.now()
         print(f'running at {dt}')
 
         async with session.get(url) as resp:
             data = await resp.json()
+        lastsong = ""
         for song in reversed(data):
             if song['updated_at'] > lastseen:
+                if f"{song['artist']} {song['song_title']}" == lastsong:
+                    # they occasionally dupe them
+                    print(f"Duplicate song {song['artist']} {song['song_title']}")
+                    continue
                 await dbcheck(song)
                 lastseen = song['updated_at']
+                lastsong = f"{song['artist']} {song['song_title']}"
 
         await asyncio.sleep(30 * 60)
 
@@ -56,6 +78,12 @@ async def dbcheck(song):
     else:
         q = "INSERT INTO songs(artist, title, album, spotify, firstseen, count) VALUES (?, ?, ?, ?, ?, 1)"
         c.execute(q, (artist, title, song['album'], song['spotify'], song['updated_at']))
+
+        res = ytmusic.search(f"{artist} {title}", filter="songs")
+        yturl = f"https://music.youtube.com/watch?v={res[0]['videoId']}"
+        print(artist, title, yturl)
+        download(yturl, artist, title)
+
     conn.commit()
 
 
