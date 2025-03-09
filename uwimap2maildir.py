@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 # This is not well written by any means, just a quick script to make maildirs out of uw-imap mbx
 # (Often confused with mbox because some .mbx files are in fact mbox)
 
@@ -14,28 +16,20 @@ import socket
 
 # 30-Jun-2020 06:11:59 -0600,7281;000000000019-00000001
 #  7-Oct-2022 07:23:27 -0600,12730479;000000090031-000018cd
-msg_header = re.compile(r"^((?: |\d)\d\-\w{3}\-\d{4} \d{2}:\d{2}:\d{2} (?:\+|\-)\d{4}),(\d+);[0-9a-fA-F]{8}([0-9a-fA-F]{4})\-([0-9a-fA-F]{8})")
+msg_header = re.compile(r"^((?: |\d)\d\-\w{3}\-\d{4} \d{2}:\d{2}:\d{2} "
+"(?:\+|\-)\d{4}),(\d+);[0-9a-fA-F]{8}([0-9a-fA-F]{4})\-([0-9a-fA-F]{8})")
 
 # 1 = date time tz
-# 2 = size in bytes (not including this header)
+# 2 = size in bytes (no idea if this includes this header)
 #     there's 8 chars here for something? maybe keyword/flags?
-# 3 = flags (hex)
+# 3 = flags
 # 4 = hexuid (just being used for maildir)
+# [0-9a-fA-F] - hex instead of \w for last item?
 
-
-# outstr = """Time: {}
-# Size: {} bytes - {} kb - {} mb
-# Flags {:04d}: 
-#   Seen: {} 
-#   trashed {} 
-#   flagged {} 
-#   replied {} 
-#   old {} 
-#   draft {}
-# uid: {:08x}"""
+# a complete guess is the first 8 chars are identifying *which* keyword is set..
+# I think I'm just going to ignore keywords entirely.
 
 timefmt = "%d-%b-%Y %H:%M:%S %z"
-timestr = "{}-{}-{} {}:{}:{} {}"
 hostname = socket.getfqdn()
 filename = "{}_{:04d}P{:08x}.{},S={}:2,{}"
 
@@ -63,16 +57,12 @@ def test(mbxfile: str):
         outfile = None
         file = ""
         for line in f:
-            #print(line.decode(), msg_header.match(line.decode()))
             header = msg_header.match(line.decode('utf-8', 'ignore'))
             if header:
                 if outfile:
                     outfile.flush()
-                print(line)
+                # print(line)
                 time = datetime.strptime(header.group(1), timefmt)
-                
-                # originally included the S= in the filename
-                # but after writing the file it never matched..
                 size = int(header.group(2)) 
 
                 flags = int("0x" + header.group(3), 16)
@@ -90,19 +80,22 @@ def test(mbxfile: str):
                     flagstr += "R"
                 
                 size += len(line)
-                print(size)
                 incr += 1
                 file = filename.format(time.timestamp(), incr, uid, hostname, size, flagstr)
                 print(file)
                 outfile = open(path + file, "ab")
-               # outfile.write(line)
             if outfile:
                 outfile.write(line)
                 
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("mbx.py [filename] - filename is the mbx formatted mailbox\n"
+        "The script will assume the folder will be named the same as the mailbox file")
+        quit()
     print("Trying", sys.argv[1])
     test(sys.argv[1])
 
-    print("Done.\n YOU WILL LIKELY HAVE TO CHOWN THE RESULTING DIRECTORY ie:\nchown -R user:group ./Maildir/." + sys.argv[1] + "/")
+    print("Done.\n YOU WILL LIKELY HAVE TO CHOWN THE RESULTING DIRECTORY\n"
+    "chown -R user:group ./Maildir/." + sys.argv[1] + "/")
