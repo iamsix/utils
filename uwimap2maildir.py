@@ -118,9 +118,9 @@ if __name__ == "__main__":
         mbdir = file
     if "." in mbdir:
         parts = mbdir.split(".")
-        print("Warning: {} appears to be a subfolder {} of {}.\n"
+        print("Warning: {} appears to be a subfolder `{}` of `{}`.\n"
         "I will create it but I can't guarantee it will work normally"
-        .format(mbdir, parts[0], parts[1]))
+        .format(mbdir, parts[1], parts[0]))
     print("Trying", file, "to ./Maildir/.{}/cur/".format(mbdir))
     user = getpwuid(os.stat(file).st_uid).pw_name
     group = getgrgid(os.stat(file).st_gid).gr_name
