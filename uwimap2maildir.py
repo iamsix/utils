@@ -30,13 +30,12 @@ msg_header = re.compile(r"^((?: |\d)\d\-\w{3}\-\d{4} \d{2}:\d{2}:\d{2} "
 r"(?:\+|\-)\d{4}),(\d+);[0-9a-fA-F]{8}([0-9a-fA-F]{4})\-([0-9a-fA-F]{8})")
 
 # 1 = date time tz
-# 2 = size in bytes (no idea if this includes this header)
-#     there's 8 chars here for something? maybe keyword/flags?
-# 3 = flags
+# 2 = size in bytes (not including includes this header)
+#     *there's 8 chars here for something? maybe keyword/flags?
+# 3 = flags (hex)
 # 4 = hexuid (just being used for maildir)
-# [0-9a-fA-F] - hex instead of \w for last item?
 
-# a complete guess is the first 8 chars are identifying *which* keyword is set..
+# *a complete guess is the first 8 chars are identifying *which* keyword is set..
 # I think I'm just going to ignore keywords entirely.
 
 timefmt = "%d-%b-%Y %H:%M:%S %z"
@@ -46,11 +45,11 @@ filename = "{}_{:04d}P{:08x}.{},S={}:2,{}"
 
 def mbx(mbxfile: str, mbdir: str, owner: str):
     with open(mbxfile, 'rb') as f:
-        
         if f.readline().decode() != "*mbx*\r\n":
             print("{} Does not appear to be a uw-imap mbx file.\n"
             "It might be mbox which can be imported directly by dovecot".format(mbxfile))
             exit()
+            
         old_umask = os.umask(0o077)
         path = "./Maildir/.{}/".format(mbdir)
         os.makedirs(path + "cur/", mode=0o700, exist_ok=True)
