@@ -3,6 +3,13 @@
 # This is not well written by any means, just a quick script to make maildirs out of uw-imap mbx
 # (Often confused with mbox because some .mbx files are in fact mbox)
 
+# It ignores imap "keywords" because setting them in dovecot is annoying 
+# It assumes all emails are 'seen' 
+# It assumes you're running it in the user folder and outputs in to that ie: 
+# [root@svr /home/testuser/]# python3 mbx2maildir.py Deleted\ Items
+# That will create /home/testuser/Maildir/.Deleted Items/cur/
+# It assumes the owner of the mbx file will be the owner of the folder and chowns it to that. 
+
 import re
 import sys
 import os
