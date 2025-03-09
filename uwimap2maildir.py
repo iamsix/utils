@@ -19,14 +19,22 @@ from pwd import getpwuid
 from grp import getgrgid
 from datetime import datetime
 import socket
-# https://github.com/uw-imap/imap/
-# *mbx*
-# 5c196345000018d4
-#    This is imap UIDVALIDITY 32 bits + another 32 bits (UID?) for some reason
-#    I think I'm safe to just ignore it?
 
-# 30-Jun-2020 06:11:59 -0600,7281;000000000019-00000001
-#  7-Oct-2022 07:23:27 -0600,12730479;000000090031-000018cd
+
+# mbx format:
+#	all data has \r\n
+#	*mbx*
+#	VVVVVVVVUUUUUUUU (V=VALIDITY, U=NEXT UID but often lazy assignment)
+#	key0
+#	key1
+#	...
+#	key29
+#	pad to 2048 bytes, last 10 bytes can be LASTPID\r\n
+#	DD-MMM-YYYY HH:MM:SS [+-]ZZZZ,length(dec);kkkkkkkkssss-uuuuuuuu
+#	msg
+#	...
+
+
 msg_header = re.compile(r"^((?: |\d)\d\-\w{3}\-\d{4} \d{2}:\d{2}:\d{2} "
 r"(?:\+|\-)\d{4}),(\d+);[0-9a-fA-F]{8}([0-9a-fA-F]{4})\-([0-9a-fA-F]{8})")
 
@@ -35,9 +43,6 @@ r"(?:\+|\-)\d{4}),(\d+);[0-9a-fA-F]{8}([0-9a-fA-F]{4})\-([0-9a-fA-F]{8})")
 #     there's 8 chars here for something? maybe keyword/flags?
 # 3 = flags (hex)
 # 4 = hexuid (just being used for maildir)
-
-# a complete guess is the first 8 chars are identifying *which* keyword is set..
-# I think I'm just going to ignore keywords entirely.
 
 timefmt = "%d-%b-%Y %H:%M:%S %z"
 hostname = socket.getfqdn()
