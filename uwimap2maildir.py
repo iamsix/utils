@@ -107,7 +107,7 @@ def mbx(mbxfile: str, mbdir: str, owner: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
+    if len(sys.argv) != 2:
         print("mbx2maildir.py [filename] - filename is the mbx formatted mailbox\n"
         "The script will assume the folder will be named the same as the mailbox file")
         quit()
