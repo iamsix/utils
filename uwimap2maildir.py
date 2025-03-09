@@ -6,6 +6,9 @@
 import re
 import sys
 import os
+import subprocess
+from pwd import getpwuid
+from grp import getgrgid
 from datetime import datetime
 import socket
 # https://github.com/uw-imap/imap/
@@ -34,26 +37,21 @@ hostname = socket.getfqdn()
 filename = "{}_{:04d}P{:08x}.{},S={}:2,{}"
 
 
-def test(mbxfile: str):
-    if mbxfile.endswith(".mbx"):
-        mbdir = mbxfile[:-4]
-    else:
-        mbdir = mbxfile
-
-    old_umask = os.umask(0o077)
-    path = "./Maildir/.{}/".format(mbdir)
-    os.makedirs(path + "cur/", mode=0o700, exist_ok=True)
-    os.makedirs(path + "new/", mode=0o700, exist_ok=True)
-    os.makedirs(path + "tmp/", mode=0o700, exist_ok=True)
-    os.umask = old_umask
-    path += "cur/"
-    incr = 0
+def mbx(mbxfile: str, mbdir: str, owner: str):
     with open(mbxfile, 'rb') as f:
         
         if f.readline().decode() != "*mbx*\r\n":
             print("{} Does not appear to be a uw-imap mbx file.\n"
             "It might be mbox which can be imported directly by dovecot".format(mbxfile))
             exit()
+        old_umask = os.umask(0o077)
+        path = "./Maildir/.{}/".format(mbdir)
+        os.makedirs(path + "cur/", mode=0o700, exist_ok=True)
+        os.makedirs(path + "new/", mode=0o700, exist_ok=True)
+        os.makedirs(path + "tmp/", mode=0o700, exist_ok=True)
+        os.umask = old_umask
+        path += "cur/"
+        incr = 0
         f.read(2041) #normally would be 2048 but we read that *mbx* line first.
         outfile = None
         file = ""
@@ -62,6 +60,8 @@ def test(mbxfile: str):
             if header:
                 if outfile:
                     outfile.flush()
+                    outfile.close()
+                    outfile = None
                 # print(line)
                 time = datetime.strptime(header.group(1), timefmt)
                 size = int(header.group(2)) 
@@ -87,16 +87,28 @@ def test(mbxfile: str):
                 outfile = open(path + file, "ab")
             if outfile:
                 outfile.write(line)
-                
+        if outfile:
+            outfile.flush()
+            outfile.close()
+    print("Doing: chown -R {} ./Maildir/".format(owner))
+    subprocess.run(["chown", "-R",  owner, "./Maildir/"])
+    
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("mbx.py [filename] - filename is the mbx formatted mailbox\n"
+        print("mbx2maildir.py [filename] - filename is the mbx formatted mailbox\n"
         "The script will assume the folder will be named the same as the mailbox file")
         quit()
-    print("Trying", sys.argv[1])
-    test(sys.argv[1])
+    file = sys.argv[1]
+    if file.endswith(".mbx"):
+        mbdir = file[:-4]
+    else:
+        mbdir = file
+    print("Trying", file, "to ./Maildir/.{}/cur/".format(mbdir))
+    user = getpwuid(os.stat(file).st_uid).pw_name
+    group = getgrgid(os.stat(file).st_gid).gr_name
+    owner = "{}:{}".format(user, group)
+    mbx(file, mbdir, owner)
 
-    print("Done.\n YOU WILL LIKELY HAVE TO CHOWN THE RESULTING DIRECTORY\n"
-    "chown -R user:group ./Maildir/." + sys.argv[1] + "/")
+    print("Done.")
