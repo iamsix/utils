@@ -9,6 +9,7 @@
 # [root@svr /home/testuser/]# python3 mbx2maildir.py Deleted\ Items
 # That will create /home/testuser/Maildir/.Deleted Items/cur/
 # It assumes the owner of the mbx file will be the owner of the folder and chowns it to that. 
+# This script is written for linux. It will likel fail in some way on any other OS
 
 import re
 import sys
@@ -30,12 +31,12 @@ msg_header = re.compile(r"^((?: |\d)\d\-\w{3}\-\d{4} \d{2}:\d{2}:\d{2} "
 r"(?:\+|\-)\d{4}),(\d+);[0-9a-fA-F]{8}([0-9a-fA-F]{4})\-([0-9a-fA-F]{8})")
 
 # 1 = date time tz
-# 2 = size in bytes (not including includes this header)
-#     *there's 8 chars here for something? maybe keyword/flags?
+# 2 = size in bytes (not including this header)
+#     there's 8 chars here for something? maybe keyword/flags?
 # 3 = flags (hex)
 # 4 = hexuid (just being used for maildir)
 
-# *a complete guess is the first 8 chars are identifying *which* keyword is set..
+# a complete guess is the first 8 chars are identifying *which* keyword is set..
 # I think I'm just going to ignore keywords entirely.
 
 timefmt = "%d-%b-%Y %H:%M:%S %z"
@@ -49,16 +50,20 @@ def mbx(mbxfile: str, mbdir: str, owner: str):
             print("{} Does not appear to be a uw-imap mbx file.\n"
             "It might be mbox which can be imported directly by dovecot".format(mbxfile))
             exit()
-            
+        
         old_umask = os.umask(0o077)
         path = "./Maildir/.{}/".format(mbdir)
+        if os.path.isdir(path):
+            print("Warning: the above is an existing maildir foder".format(mbdir))
         os.makedirs(path + "cur/", mode=0o700, exist_ok=True)
         os.makedirs(path + "new/", mode=0o700, exist_ok=True)
         os.makedirs(path + "tmp/", mode=0o700, exist_ok=True)
         os.umask = old_umask
         path += "cur/"
-        incr = 0
+
         f.read(2041) #normally would be 2048 but we read that *mbx* line first.
+
+        incr = 0
         outfile = None
         file = ""
         for line in f:
@@ -90,7 +95,7 @@ def mbx(mbxfile: str, mbdir: str, owner: str):
                 incr += 1
                 file = filename.format(time.timestamp(), incr, uid, hostname, size, flagstr)
                 print(file)
-                outfile = open(path + file, "ab")
+                outfile = open(path + file, "xb")
             if outfile:
                 outfile.write(line)
         if outfile:
@@ -111,6 +116,11 @@ if __name__ == "__main__":
         mbdir = file[:-4]
     else:
         mbdir = file
+    if "." in mbdir:
+        parts = mbdir.split(".")
+        print("Warning: {} appears to be a subfolder {} of {}.\n"
+        "I will create it but I can't guarantee it will work normally"
+        .format(mbdir, parts[0], parts[1]))
     print("Trying", file, "to ./Maildir/.{}/cur/".format(mbdir))
     user = getpwuid(os.stat(file).st_uid).pw_name
     group = getgrgid(os.stat(file).st_gid).gr_name
