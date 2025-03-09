@@ -17,7 +17,7 @@ import socket
 # 30-Jun-2020 06:11:59 -0600,7281;000000000019-00000001
 #  7-Oct-2022 07:23:27 -0600,12730479;000000090031-000018cd
 msg_header = re.compile(r"^((?: |\d)\d\-\w{3}\-\d{4} \d{2}:\d{2}:\d{2} "
-"(?:\+|\-)\d{4}),(\d+);[0-9a-fA-F]{8}([0-9a-fA-F]{4})\-([0-9a-fA-F]{8})")
+r"(?:\+|\-)\d{4}),(\d+);[0-9a-fA-F]{8}([0-9a-fA-F]{4})\-([0-9a-fA-F]{8})")
 
 # 1 = date time tz
 # 2 = size in bytes (no idea if this includes this header)
@@ -51,7 +51,8 @@ def test(mbxfile: str):
     with open(mbxfile, 'rb') as f:
         
         if f.readline().decode() != "*mbx*\r\n":
-            print("Does not appear to be a uw-imap mbx file.\nIt might be mbox which can be imported directly by dovecot")
+            print("{} Does not appear to be a uw-imap mbx file.\n"
+            "It might be mbox which can be imported directly by dovecot".format(mbxfile))
             exit()
         f.read(2041) #normally would be 2048 but we read that *mbx* line first.
         outfile = None
